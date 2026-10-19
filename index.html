@@ -144,6 +144,27 @@
       });
     }
 
+    // Build a YouTube search URL like "Grateful Dead 5/8/77"
+function youtubeSearchUrl(isoDate) {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  const shortYear = String(y).slice(-2);
+  const query = `Grateful Dead ${m}/${d}/${shortYear}`;
+  return 'https://www.youtube.com/results?search_query=' + encodeURIComponent(query);
+}
+
+// Build the YouTube link row
+function makeYouTubeItem(isoDate) {
+  const item = document.createElement('li');
+  item.className = 'youtube-item';
+  const link = document.createElement('a');
+  link.href = youtubeSearchUrl(isoDate);
+  link.target = '_blank';
+  link.rel = 'noopener';
+  link.textContent = '▶ Find this show on YouTube';
+  item.appendChild(link);
+  return item;
+}
+
     // Update the filter buttons: highlight the active one, show counts
     function updateFilterButtons() {
       const counts = { ALL: 0, SBD: 0, AUD: 0, MTX: 0 };
@@ -167,17 +188,18 @@
       resultsList.innerHTML = '';
       if (!lastSearch) return;
 
-      const { mode, recordings, year } = lastSearch;
+      const { mode, recordings, year, date } = lastSearch;
       const visible = currentFilter === 'ALL'
         ? recordings
         : recordings.filter(rec => rec.sourceType === currentFilter);
       const filterNote = currentFilter === 'ALL' ? '' : ` (${currentFilter} only)`;
 
       if (mode === 'date') {
-        if (recordings.length === 0) {
-          statusText.textContent = 'No recordings found for that date.';
-          return;
-        }
+         resultsList.appendChild(makeYouTubeItem(date));       
+    if (recordings.length === 0) {
+      statusText.textContent = 'No recordings found for that date.';
+      return;
+    }
         if (visible.length === 0) {
           statusText.textContent = `No ${currentFilter} recordings for that date.`;
           return;
@@ -212,22 +234,24 @@
       statusText.textContent =
         `${year}: ${days.length} shows, ${visible.length} recordings${filterNote}`;
 
-      for (const day of days) {
-        const recs = shows[day];
-        const item = document.createElement('li');
-        const details = document.createElement('details');
-        const summary = document.createElement('summary');
-        const list = document.createElement('ul');
-        list.className = 'recording-list';
+          for (const day of days) {
+      const recs = shows[day];
+      const item = document.createElement('li');
+      const details = document.createElement('details');
+      const summary = document.createElement('summary');
+      const list = document.createElement('ul');
+      list.className = 'recording-list';
 
-        summary.textContent = formatDate(day) + ' · ' + recs.length +
-          (recs.length === 1 ? ' recording' : ' recordings');
+      summary.textContent = formatDate(day) + ' · ' + recs.length +
+        (recs.length === 1 ? ' recording' : ' recordings');
 
-        for (const rec of recs) {
-          list.appendChild(makeRecordingItem(rec));
-        }
+      list.appendChild(makeYouTubeItem(day));             // NEW: just above the recordings loop
 
-        details.appendChild(summary);
+      for (const rec of recs) {
+        list.appendChild(makeRecordingItem(rec));
+      }
+
+      details.appendChild(summary);
         details.appendChild(list);
         item.appendChild(details);
         resultsList.appendChild(item);
