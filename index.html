@@ -44,30 +44,61 @@
     }
     yearSelect.value = '1977';
 
-    // Ask Archive.org for recordings matching a query
-    async function fetchRecordings(query) {
-      const url = 'https://archive.org/advancedsearch.php?q=' +
-        encodeURIComponent(query) +
-        '&fl[]=identifier&fl[]=title&fl[]=date&rows=2000&output=json';
+    function fireScore(rec) {
+  const downloads = Number(rec.downloads) || 0;
+  const rating = Number(rec.avg_rating) || 0;
+  const reviews = Number(rec.num_reviews) || 0;
 
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error('Archive.org returned status ' + response.status);
-      }
-      const data = await response.json();
-      return data.response.docs;
-    }
+  const PRIOR_RATING = 3.5;  // assumed rating when we know little
+  const PRIOR_WEIGHT = 3;    // how many "phantom reviews" at that rating
+
+  const adjustedRating =
+    (rating * reviews + PRIOR_RATING * PRIOR_WEIGHT) / (reviews + PRIOR_WEIGHT);
+
+  return Math.log10(downloads + 1) * adjustedRating;
+}
+
+    // Ask Archive.org for recordings matching a query
+async function fetchRecordings(query) {
+  const url = 'https://archive.org/advancedsearch.php?q=' +
+    encodeURIComponent(query) +
+    '&fl[]=identifier&fl[]=title&fl[]=date&fl[]=downloads&fl[]=avg_rating&fl[]=num_reviews&rows=2000&output=json';
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error('Archive.org returned status ' + response.status);
+  }
+  const data = await response.json();
+  const docs = data.response.docs;
+
+  for (const rec of docs) {
+    rec.fire = fireScore(rec);
+  }
+  docs.sort((a, b) => b.fire - a.fire);
+  return docs;
+}
 
     // Build one clickable <li> for a recording
-    function makeRecordingItem(rec) {
-      const item = document.createElement('li');
-      const link = document.createElement('a');
-      link.href = 'https://archive.org/details/' + rec.identifier;
-      link.textContent = rec.title || rec.identifier;
-      link.target = '_blank';
-      item.appendChild(link);
-      return item;
-    }
+   function makeRecordingItem(rec) {
+  const item = document.createElement('li');
+  const link = document.createElement('a');
+  link.href = 'https://archive.org/details/' + rec.identifier;
+  link.textContent = rec.title || rec.identifier;
+  link.target = '_blank';
+
+  const stats = document.createElement('span');
+  stats.className = 'views';
+  const ratingText = rec.num_reviews
+    ? ` · ★ ${Number(rec.avg_rating).toFixed(1)} (${rec.num_reviews})`
+    : '';
+  stats.textContent =
+    `🔥 ${rec.fire.toFixed(1)} · ${(Number(rec.downloads) || 0).toLocaleString()} views` +
+    ratingText;
+  link.appendChild(stats);
+
+  item.appendChild(link);
+  return item;
+}
 
     // Turn "1977-05-08" into "Sun, May 8, 1977"
     function formatDate(isoDate) {
