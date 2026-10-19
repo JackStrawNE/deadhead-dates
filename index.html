@@ -12,9 +12,15 @@
     <p class="tagline">Pick a show date. Find the tapes.</p>
 
     <div class="search-row">
-      <label for="show-date">Show date</label>
+      <label for="show-date">Single show</label>
       <input type="date" id="show-date" value="1977-05-08">
-      <button id="search-btn">Search</button>
+      <button id="date-btn">Search date</button>
+    </div>
+
+    <div class="search-row">
+      <label for="show-year">Whole year</label>
+      <select id="show-year"></select>
+      <button id="year-btn">Browse year</button>
     </div>
 
     <p id="status"></p>
@@ -23,11 +29,55 @@
 
   <script>
     const dateInput = document.getElementById('show-date');
-    const searchBtn = document.getElementById('search-btn');
+    const yearSelect = document.getElementById('show-year');
+    const dateBtn = document.getElementById('date-btn');
+    const yearBtn = document.getElementById('year-btn');
     const statusText = document.getElementById('status');
     const resultsList = document.getElementById('results');
 
-    async function search() {
+    // Fill the year dropdown (the Dead toured 1965 to 1995)
+    for (let year = 1965; year <= 1995; year++) {
+      const option = document.createElement('option');
+      option.value = year;
+      option.textContent = year;
+      yearSelect.appendChild(option);
+    }
+    yearSelect.value = '1977';
+
+    // Ask Archive.org for recordings matching a query
+    async function fetchRecordings(query) {
+      const url = 'https://archive.org/advancedsearch.php?q=' +
+        encodeURIComponent(query) +
+        '&fl[]=identifier&fl[]=title&fl[]=date&rows=2000&output=json';
+
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error('Archive.org returned status ' + response.status);
+      }
+      const data = await response.json();
+      return data.response.docs;
+    }
+
+    // Build one clickable <li> for a recording
+    function makeRecordingItem(rec) {
+      const item = document.createElement('li');
+      const link = document.createElement('a');
+      link.href = 'https://archive.org/details/' + rec.identifier;
+      link.textContent = rec.title || rec.identifier;
+      link.target = '_blank';
+      item.appendChild(link);
+      return item;
+    }
+
+    // Turn "1977-05-08" into "Sun, May 8, 1977"
+    function formatDate(isoDate) {
+      const [y, m, d] = isoDate.split('-').map(Number);
+      return new Date(y, m - 1, d).toLocaleDateString('en-US', {
+        weekday: 'short', year: 'numeric', month: 'long', day: 'numeric'
+      });
+    }
+
+    async function searchDate() {
       const date = dateInput.value;
       if (!date) {
         statusText.textContent = 'Pick a date first.';
@@ -37,15 +87,10 @@
       statusText.textContent = 'Searching...';
       resultsList.innerHTML = '';
 
-      const query = `collection:GratefulDead AND date:${date}`;
-      const url = 'https://archive.org/advancedsearch.php?q=' +
-        encodeURIComponent(query) +
-        '&fl[]=identifier&fl[]=title&rows=50&output=json';
-
       try {
-        const response = await fetch(url);
-        const data = await response.json();
-        const recordings = data.response.docs;
+        const recordings = await fetchRecordings(
+          `collection:GratefulDead AND date:${date}`
+        );
 
         if (recordings.length === 0) {
           statusText.textContent = 'No recordings found for that date.';
@@ -53,14 +98,64 @@
         }
 
         statusText.textContent = `Found ${recordings.length} recording(s):`;
-
         for (const rec of recordings) {
+          resultsList.appendChild(makeRecordingItem(rec));
+        }
+      } catch (error) {
+        statusText.textContent = 'Something went wrong. Check the console (F12).';
+        console.error(error);
+      }
+    }
+
+    async function searchYear() {
+      const year = yearSelect.value;
+
+      statusText.textContent = 'Searching...';
+      resultsList.innerHTML = '';
+
+      try {
+        const recordings = await fetchRecordings(
+          `collection:GratefulDead AND year:${year}`
+        );
+
+        // Group recordings by show date
+        const shows = {};
+        for (const rec of recordings) {
+          if (!rec.date) continue;
+          const day = rec.date.slice(0, 10);
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) continue;
+          if (!shows[day]) shows[day] = [];
+          shows[day].push(rec);
+        }
+
+        const days = Object.keys(shows).sort();
+
+        if (days.length === 0) {
+          statusText.textContent = `No recordings found for ${year}.`;
+          return;
+        }
+
+        statusText.textContent =
+          `${year}: ${days.length} shows, ${recordings.length} recordings`;
+
+        for (const day of days) {
+          const recs = shows[day];
           const item = document.createElement('li');
-          const link = document.createElement('a');
-          link.href = 'https://archive.org/details/' + rec.identifier;
-          link.textContent = rec.title || rec.identifier;
-          link.target = '_blank';
-          item.appendChild(link);
+          const details = document.createElement('details');
+          const summary = document.createElement('summary');
+          const list = document.createElement('ul');
+          list.className = 'recording-list';
+
+          summary.textContent = formatDate(day) + ' · ' + recs.length +
+            (recs.length === 1 ? ' recording' : ' recordings');
+
+          for (const rec of recs) {
+            list.appendChild(makeRecordingItem(rec));
+          }
+
+          details.appendChild(summary);
+          details.appendChild(list);
+          item.appendChild(details);
           resultsList.appendChild(item);
         }
       } catch (error) {
@@ -69,7 +164,8 @@
       }
     }
 
-    searchBtn.addEventListener('click', search);
+    dateBtn.addEventListener('click', searchDate);
+    yearBtn.addEventListener('click', searchYear);
   </script>
 </body>
 </html>

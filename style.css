@@ -54,7 +54,8 @@ label {
   color: var(--muted);
 }
 
-input[type="date"] {
+input[type="date"],
+select {
   flex: 1;
   min-width: 160px;
   padding: 0.7rem 0.9rem;
@@ -121,4 +122,45 @@ a:focus-visible {
 #results li a:hover {
   background: var(--card-hover);
   border-color: var(--accent);
+}
+.search-row + .search-row {
+  margin-top: 1rem;
+}
+
+#results details {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  transition: border-color 0.15s ease;
+}
+
+#results details:hover,
+#results details[open] {
+  border-color: var(--accent);
+}
+
+#results summary {
+  padding: 0.9rem 1.1rem;
+  cursor: pointer;
+}
+
+.recording-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 0.5rem 0.6rem;
+  display: grid;
+  gap: 0.25rem;
+}
+
+#results .recording-list li a {
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  border: none;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+#results .recording-list li a:hover {
+  background: var(--card-hover);
+  color: var(--text);
 }
