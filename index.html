@@ -1,10 +1,68 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>Dead Dates</title>
-  </head>
-  <body>
-    <h1>Dead Dates</h1>
-    <p>Hello, Deadheads. Search tool coming soon.</p>
-  </body>
+<head>
+  <meta charset="utf-8">
+  <title>Dead Dates</title>
+</head>
+<body>
+  <h1>Dead Dates</h1>
+
+  <label for="show-date">Enter a show date:</label>
+  <input type="date" id="show-date" value="1977-05-08">
+  <button id="search-btn">Search</button>
+
+  <p id="status"></p>
+  <ul id="results"></ul>
+
+  <script>
+    const dateInput = document.getElementById('show-date');
+    const searchBtn = document.getElementById('search-btn');
+    const statusText = document.getElementById('status');
+    const resultsList = document.getElementById('results');
+
+    async function search() {
+      const date = dateInput.value;
+      if (!date) {
+        statusText.textContent = 'Pick a date first.';
+        return;
+      }
+
+      statusText.textContent = 'Searching...';
+      resultsList.innerHTML = '';
+
+      const query = `collection:GratefulDead AND date:${date}`;
+      const url = 'https://archive.org/advancedsearch.php?q=' +
+        encodeURIComponent(query) +
+        '&fl[]=identifier&fl[]=title&rows=50&output=json';
+
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        const recordings = data.response.docs;
+
+        if (recordings.length === 0) {
+          statusText.textContent = 'No recordings found for that date.';
+          return;
+        }
+
+        statusText.textContent = `Found ${recordings.length} recording(s):`;
+
+        for (const rec of recordings) {
+          const item = document.createElement('li');
+          const link = document.createElement('a');
+          link.href = 'https://archive.org/details/' + rec.identifier;
+          link.textContent = rec.title || rec.identifier;
+          link.target = '_blank';
+          item.appendChild(link);
+          resultsList.appendChild(item);
+        }
+      } catch (error) {
+        statusText.textContent = 'Something went wrong. Check the console (F12).';
+        console.error(error);
+      }
+    }
+
+    searchBtn.addEventListener('click', search);
+  </script>
+</body>
 </html>
