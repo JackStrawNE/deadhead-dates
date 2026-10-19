@@ -36,6 +36,10 @@ Then open `index.html` in a browser.
 - Photo links
 - Tune the Fire score
 
+## Why I Did This
+
+I'm a lifelong DeadHead, and wanted to learn how to vibe code a webpage.  This combined a lifelong passion with a new learning adventure!
+
 ## Notes
 
 This site hosts no audio. It links to recordings on the Internet Archive, and all recordings belong to their respective sources and tapers. It's an independent fan project, not affiliated with the Grateful Dead or the Internet Archive.
