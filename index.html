@@ -62,7 +62,7 @@
 async function fetchRecordings(query) {
   const url = 'https://archive.org/advancedsearch.php?q=' +
     encodeURIComponent(query) +
-    '&fl[]=identifier&fl[]=title&fl[]=date&fl[]=downloads&fl[]=avg_rating&fl[]=num_reviews&rows=2000&output=json';
+    '&fl[]=identifier&fl[]=title&fl[]=date&fl[]=downloads&fl[]=avg_rating&fl[]=num_reviews&fl[]=source&rows=2000&output=json';
 
   const response = await fetch(url);
   if (!response.ok) {
@@ -78,13 +78,36 @@ async function fetchRecordings(query) {
   return docs;
 }
 
+// Guess the recording type from naming conventions
+function detectSource(rec) {
+  const text = [rec.identifier, rec.title, rec.source]
+    .map(part => String(part || ''))
+    .join(' ')
+    .toLowerCase();
+
+  if (/(^|[^a-z])mtx([^a-z]|$)|matrix/.test(text)) return 'MTX';
+  if (/(^|[^a-z])sbd([^a-z]|$)|soundboard/.test(text)) return 'SBD';
+  if (/(^|[^a-z])aud([^a-z]|$)|audience/.test(text)) return 'AUD';
+  return null;
+}
+
     // Build one clickable <li> for a recording
-   function makeRecordingItem(rec) {
+  function makeRecordingItem(rec) {
   const item = document.createElement('li');
   const link = document.createElement('a');
   link.href = 'https://archive.org/details/' + rec.identifier;
-  link.textContent = rec.title || rec.identifier;
   link.target = '_blank';
+
+  const title = document.createElement('span');
+  const sourceType = detectSource(rec);
+  if (sourceType) {
+    const tag = document.createElement('span');
+    tag.className = 'tag tag-' + sourceType.toLowerCase();
+    tag.textContent = sourceType;
+    title.appendChild(tag);
+  }
+  title.appendChild(document.createTextNode(rec.title || rec.identifier));
+  link.appendChild(title);
 
   const stats = document.createElement('span');
   stats.className = 'views';

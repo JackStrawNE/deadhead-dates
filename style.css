@@ -164,3 +164,19 @@ a:focus-visible {
   background: var(--card-hover);
   color: var(--text);
 }
+
+.tag {
+  display: inline-block;
+  margin-right: 0.5rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+  color: #12101a;
+}
+
+.tag-sbd { background: #e8b84a; }
+.tag-aud { background: #4a9be8; }
+.tag-mtx { background: #a66bd6; }
