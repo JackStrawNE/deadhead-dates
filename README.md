@@ -38,7 +38,7 @@ Then open `index.html` in a browser.
 
 ## Why I Did This
 
-I'm a lifelong DeadHead, and wanted to learn how to vibe code a webpage.  This combined a lifelong passion with a new learning adventure!
+I'm a longtime DeadHead in good standing, and wanted to learn how to vibe code a webpage.  This combined a lifelong passion with a new learning adventure!
 
 ## Notes
 
