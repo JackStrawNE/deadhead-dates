@@ -1,18 +1,25 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Dead Dates</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Dead Dates</h1>
+  <div class="container">
+    <h1>Dead Dates</h1>
+    <p class="tagline">Pick a show date. Find the tapes.</p>
 
-  <label for="show-date">Enter a show date:</label>
-  <input type="date" id="show-date" value="1977-05-08">
-  <button id="search-btn">Search</button>
+    <div class="search-row">
+      <label for="show-date">Show date</label>
+      <input type="date" id="show-date" value="1977-05-08">
+      <button id="search-btn">Search</button>
+    </div>
 
-  <p id="status"></p>
-  <ul id="results"></ul>
+    <p id="status"></p>
+    <ul id="results"></ul>
+  </div>
 
   <script>
     const dateInput = document.getElementById('show-date');
