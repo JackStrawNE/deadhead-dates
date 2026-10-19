@@ -180,3 +180,32 @@ a:focus-visible {
 .tag-sbd { background: #e8b84a; }
 .tag-aud { background: #4a9be8; }
 .tag-mtx { background: #a66bd6; }
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+.filter-btn {
+  padding: 0.4rem 0.9rem;
+  background: var(--card);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.filter-btn:hover {
+  filter: none;
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.filter-btn.active {
+  background: var(--accent);
+  color: #1a1408;
+  border-color: var(--accent);
+}

@@ -23,6 +23,13 @@
       <button id="year-btn">Browse year</button>
     </div>
 
+    <div class="filter-row">
+      <button class="filter-btn active" data-filter="ALL">All</button>
+      <button class="filter-btn" data-filter="SBD">SBD</button>
+      <button class="filter-btn" data-filter="AUD">AUD</button>
+      <button class="filter-btn" data-filter="MTX">MTX</button>
+    </div>
+
     <p id="status"></p>
     <ul id="results"></ul>
   </div>
@@ -34,6 +41,11 @@
     const yearBtn = document.getElementById('year-btn');
     const statusText = document.getElementById('status');
     const resultsList = document.getElementById('results');
+    const filterButtons = document.querySelectorAll('.filter-btn');
+
+    // State: which filter is active, and what the last search returned
+    let currentFilter = 'ALL';
+    let lastSearch = null;
 
     // Fill the year dropdown (the Dead toured 1965 to 1995)
     for (let year = 1965; year <= 1995; year++) {
@@ -44,84 +56,85 @@
     }
     yearSelect.value = '1977';
 
+    // Combine views and ratings into one "Fire" score
     function fireScore(rec) {
-  const downloads = Number(rec.downloads) || 0;
-  const rating = Number(rec.avg_rating) || 0;
-  const reviews = Number(rec.num_reviews) || 0;
+      const downloads = Number(rec.downloads) || 0;
+      const rating = Number(rec.avg_rating) || 0;
+      const reviews = Number(rec.num_reviews) || 0;
 
-  const PRIOR_RATING = 3.5;  // assumed rating when we know little
-  const PRIOR_WEIGHT = 3;    // how many "phantom reviews" at that rating
+      const PRIOR_RATING = 3.5;  // assumed rating when we know little
+      const PRIOR_WEIGHT = 3;    // how many "phantom reviews" at that rating
 
-  const adjustedRating =
-    (rating * reviews + PRIOR_RATING * PRIOR_WEIGHT) / (reviews + PRIOR_WEIGHT);
+      const adjustedRating =
+        (rating * reviews + PRIOR_RATING * PRIOR_WEIGHT) / (reviews + PRIOR_WEIGHT);
 
-  return Math.log10(downloads + 1) * adjustedRating;
-}
+      return Math.log10(downloads + 1) * adjustedRating;
+    }
+
+    // Guess the recording type from naming conventions
+    function detectSource(rec) {
+      const text = [rec.identifier, rec.title, rec.source]
+        .map(part => String(part || ''))
+        .join(' ')
+        .toLowerCase();
+
+      if (/(^|[^a-z])mtx([^a-z]|$)|matrix/.test(text)) return 'MTX';
+      if (/(^|[^a-z])sbd([^a-z]|$)|soundboard/.test(text)) return 'SBD';
+      if (/(^|[^a-z])aud([^a-z]|$)|audience/.test(text)) return 'AUD';
+      return null;
+    }
 
     // Ask Archive.org for recordings matching a query
-async function fetchRecordings(query) {
-  const url = 'https://archive.org/advancedsearch.php?q=' +
-    encodeURIComponent(query) +
-    '&fl[]=identifier&fl[]=title&fl[]=date&fl[]=downloads&fl[]=avg_rating&fl[]=num_reviews&fl[]=source&rows=2000&output=json';
+    async function fetchRecordings(query) {
+      const url = 'https://archive.org/advancedsearch.php?q=' +
+        encodeURIComponent(query) +
+        '&fl[]=identifier&fl[]=title&fl[]=date&fl[]=downloads&fl[]=avg_rating&fl[]=num_reviews&fl[]=source&rows=2000&output=json';
 
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error('Archive.org returned status ' + response.status);
-  }
-  const data = await response.json();
-  const docs = data.response.docs;
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error('Archive.org returned status ' + response.status);
+      }
+      const data = await response.json();
+      const docs = data.response.docs;
 
-  for (const rec of docs) {
-    rec.fire = fireScore(rec);
-  }
-  docs.sort((a, b) => b.fire - a.fire);
-  return docs;
-}
-
-// Guess the recording type from naming conventions
-function detectSource(rec) {
-  const text = [rec.identifier, rec.title, rec.source]
-    .map(part => String(part || ''))
-    .join(' ')
-    .toLowerCase();
-
-  if (/(^|[^a-z])mtx([^a-z]|$)|matrix/.test(text)) return 'MTX';
-  if (/(^|[^a-z])sbd([^a-z]|$)|soundboard/.test(text)) return 'SBD';
-  if (/(^|[^a-z])aud([^a-z]|$)|audience/.test(text)) return 'AUD';
-  return null;
-}
+      for (const rec of docs) {
+        rec.fire = fireScore(rec);
+        rec.sourceType = detectSource(rec);
+      }
+      docs.sort((a, b) => b.fire - a.fire);
+      return docs;
+    }
 
     // Build one clickable <li> for a recording
-  function makeRecordingItem(rec) {
-  const item = document.createElement('li');
-  const link = document.createElement('a');
-  link.href = 'https://archive.org/details/' + rec.identifier;
-  link.target = '_blank';
+    function makeRecordingItem(rec) {
+      const item = document.createElement('li');
+      const link = document.createElement('a');
+      link.href = 'https://archive.org/details/' + rec.identifier;
+      link.target = '_blank';
 
-  const title = document.createElement('span');
-  const sourceType = detectSource(rec);
-  if (sourceType) {
-    const tag = document.createElement('span');
-    tag.className = 'tag tag-' + sourceType.toLowerCase();
-    tag.textContent = sourceType;
-    title.appendChild(tag);
-  }
-  title.appendChild(document.createTextNode(rec.title || rec.identifier));
-  link.appendChild(title);
+      const title = document.createElement('span');
+      if (rec.sourceType) {
+        const tag = document.createElement('span');
+        tag.className = 'tag tag-' + rec.sourceType.toLowerCase();
+        tag.textContent = rec.sourceType;
+        title.appendChild(tag);
+      }
+      title.appendChild(document.createTextNode(rec.title || rec.identifier));
+      link.appendChild(title);
 
-  const stats = document.createElement('span');
-  stats.className = 'views';
-  const ratingText = rec.num_reviews
-    ? ` · ★ ${Number(rec.avg_rating).toFixed(1)} (${rec.num_reviews})`
-    : '';
-  stats.textContent =
-    `🔥 ${rec.fire.toFixed(1)} · ${(Number(rec.downloads) || 0).toLocaleString()} views` +
-    ratingText;
-  link.appendChild(stats);
+      const stats = document.createElement('span');
+      stats.className = 'views';
+      const ratingText = rec.num_reviews
+        ? ` · ★ ${Number(rec.avg_rating).toFixed(1)} (${rec.num_reviews})`
+        : '';
+      stats.textContent =
+        `🔥 ${rec.fire.toFixed(1)} · ${(Number(rec.downloads) || 0).toLocaleString()} views` +
+        ratingText;
+      link.appendChild(stats);
 
-  item.appendChild(link);
-  return item;
-}
+      item.appendChild(link);
+      return item;
+    }
 
     // Turn "1977-05-08" into "Sun, May 8, 1977"
     function formatDate(isoDate) {
@@ -129,6 +142,96 @@ function detectSource(rec) {
       return new Date(y, m - 1, d).toLocaleDateString('en-US', {
         weekday: 'short', year: 'numeric', month: 'long', day: 'numeric'
       });
+    }
+
+    // Update the filter buttons: highlight the active one, show counts
+    function updateFilterButtons() {
+      const counts = { ALL: 0, SBD: 0, AUD: 0, MTX: 0 };
+      if (lastSearch) {
+        counts.ALL = lastSearch.recordings.length;
+        for (const rec of lastSearch.recordings) {
+          if (rec.sourceType) counts[rec.sourceType]++;
+        }
+      }
+
+      for (const btn of filterButtons) {
+        const type = btn.dataset.filter;
+        const label = type === 'ALL' ? 'All' : type;
+        btn.textContent = lastSearch ? `${label} · ${counts[type]}` : label;
+        btn.classList.toggle('active', type === currentFilter);
+      }
+    }
+
+    // Draw the stored search results, applying the current filter
+    function renderResults() {
+      resultsList.innerHTML = '';
+      if (!lastSearch) return;
+
+      const { mode, recordings, year } = lastSearch;
+      const visible = currentFilter === 'ALL'
+        ? recordings
+        : recordings.filter(rec => rec.sourceType === currentFilter);
+      const filterNote = currentFilter === 'ALL' ? '' : ` (${currentFilter} only)`;
+
+      if (mode === 'date') {
+        if (recordings.length === 0) {
+          statusText.textContent = 'No recordings found for that date.';
+          return;
+        }
+        if (visible.length === 0) {
+          statusText.textContent = `No ${currentFilter} recordings for that date.`;
+          return;
+        }
+
+        statusText.textContent = `Found ${visible.length} recording(s)${filterNote}:`;
+        for (const rec of visible) {
+          resultsList.appendChild(makeRecordingItem(rec));
+        }
+        return;
+      }
+
+      // Year mode: group the visible recordings by show date
+      const shows = {};
+      for (const rec of visible) {
+        if (!rec.date) continue;
+        const day = rec.date.slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) continue;
+        if (!shows[day]) shows[day] = [];
+        shows[day].push(rec);
+      }
+
+      const days = Object.keys(shows).sort();
+
+      if (days.length === 0) {
+        statusText.textContent = recordings.length === 0
+          ? `No recordings found for ${year}.`
+          : `No ${currentFilter} recordings found for ${year}.`;
+        return;
+      }
+
+      statusText.textContent =
+        `${year}: ${days.length} shows, ${visible.length} recordings${filterNote}`;
+
+      for (const day of days) {
+        const recs = shows[day];
+        const item = document.createElement('li');
+        const details = document.createElement('details');
+        const summary = document.createElement('summary');
+        const list = document.createElement('ul');
+        list.className = 'recording-list';
+
+        summary.textContent = formatDate(day) + ' · ' + recs.length +
+          (recs.length === 1 ? ' recording' : ' recordings');
+
+        for (const rec of recs) {
+          list.appendChild(makeRecordingItem(rec));
+        }
+
+        details.appendChild(summary);
+        details.appendChild(list);
+        item.appendChild(details);
+        resultsList.appendChild(item);
+      }
     }
 
     async function searchDate() {
@@ -140,21 +243,16 @@ function detectSource(rec) {
 
       statusText.textContent = 'Searching...';
       resultsList.innerHTML = '';
+      lastSearch = null;
+      updateFilterButtons();
 
       try {
         const recordings = await fetchRecordings(
           `collection:GratefulDead AND date:${date}`
         );
-
-        if (recordings.length === 0) {
-          statusText.textContent = 'No recordings found for that date.';
-          return;
-        }
-
-        statusText.textContent = `Found ${recordings.length} recording(s):`;
-        for (const rec of recordings) {
-          resultsList.appendChild(makeRecordingItem(rec));
-        }
+        lastSearch = { mode: 'date', recordings };
+        updateFilterButtons();
+        renderResults();
       } catch (error) {
         statusText.textContent = 'Something went wrong. Check the console (F12).';
         console.error(error);
@@ -166,52 +264,16 @@ function detectSource(rec) {
 
       statusText.textContent = 'Searching...';
       resultsList.innerHTML = '';
+      lastSearch = null;
+      updateFilterButtons();
 
       try {
         const recordings = await fetchRecordings(
           `collection:GratefulDead AND year:${year}`
         );
-
-        // Group recordings by show date
-        const shows = {};
-        for (const rec of recordings) {
-          if (!rec.date) continue;
-          const day = rec.date.slice(0, 10);
-          if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) continue;
-          if (!shows[day]) shows[day] = [];
-          shows[day].push(rec);
-        }
-
-        const days = Object.keys(shows).sort();
-
-        if (days.length === 0) {
-          statusText.textContent = `No recordings found for ${year}.`;
-          return;
-        }
-
-        statusText.textContent =
-          `${year}: ${days.length} shows, ${recordings.length} recordings`;
-
-        for (const day of days) {
-          const recs = shows[day];
-          const item = document.createElement('li');
-          const details = document.createElement('details');
-          const summary = document.createElement('summary');
-          const list = document.createElement('ul');
-          list.className = 'recording-list';
-
-          summary.textContent = formatDate(day) + ' · ' + recs.length +
-            (recs.length === 1 ? ' recording' : ' recordings');
-
-          for (const rec of recs) {
-            list.appendChild(makeRecordingItem(rec));
-          }
-
-          details.appendChild(summary);
-          details.appendChild(list);
-          item.appendChild(details);
-          resultsList.appendChild(item);
-        }
+        lastSearch = { mode: 'year', recordings, year };
+        updateFilterButtons();
+        renderResults();
       } catch (error) {
         statusText.textContent = 'Something went wrong. Check the console (F12).';
         console.error(error);
@@ -220,6 +282,14 @@ function detectSource(rec) {
 
     dateBtn.addEventListener('click', searchDate);
     yearBtn.addEventListener('click', searchYear);
+
+    for (const btn of filterButtons) {
+      btn.addEventListener('click', () => {
+        currentFilter = btn.dataset.filter;
+        updateFilterButtons();
+        renderResults();
+      });
+    }
   </script>
 </body>
 </html>
