@@ -209,3 +209,30 @@ a:focus-visible {
   color: #1a1408;
   border-color: var(--accent);
 }
+
+#results .youtube-item a {
+  justify-content: center;
+  background: #e53935;
+  border-color: #e53935;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+#results .youtube-item a:hover {
+  background: #ff5252;
+  border-color: #ff5252;
+}
+
+#results .recording-list .youtube-item a {
+  border: none;
+  background: #e53935;
+  color: #fff;
+  font-size: 0.9rem;
+  margin-bottom: 0.35rem;
+}
+
+#results .recording-list .youtube-item a:hover {
+  background: #ff5252;
+  color: #fff;
+}
