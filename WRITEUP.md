@@ -48,6 +48,7 @@ Most of what I learned came from things that broke.
 - **Fine locally, broken online.** I had forgotten to push the stylesheet. Now I run `git status` before every push.
 - **Syntax errors.** A stray word and a misplaced line each stopped the whole page. The browser console named the line, and the fixes took seconds.
 - **Stale styling.** The browser kept an old copy of my stylesheet. A hard reload fixed it, and a version number on the stylesheet link prevents it for visitors.
+- **Social Preview Not Showing**  I’d forgotten to save a file in my editor, so Git had nothing to commit. Now I check for the unsaved dot, and I turned on Auto Save.
 
 ## What I learned and what's next
 
