@@ -34,7 +34,6 @@ Then open `index.html` in a browser.
 
 ## Roadmap
 
-- Photo links
 - Tune the Fire score
 
 ## Why I Did This
