@@ -10,6 +10,9 @@ Pick a Grateful Dead show date (or a whole year) and find the available recordin
 - **Year browsing:** pick a year (1965 to 1995) and see its shows, each expanding to show its recordings.
 - **Fire score:** recordings are ranked hottest first, using a score that blends all-time views with listener ratings.
 - **Source tags:** recordings are labeled SBD (soundboard), AUD (audience), or MTX (matrix) when the naming makes that clear.
+- **Source Filter** You can filter recordings by source type.
+- **YouTube Links** There are now YouTube links for each show.  (This is only leading to a YouTube search, it does not mean that the show exists, or in what form it may exist.)
+- **Shareable Links** There are now shareable links to specific recordings, dates and years.
 
 ## How the Fire score works
 
@@ -30,9 +33,6 @@ Then open `index.html` in a browser.
 
 ## Roadmap
 
-- Filter recordings by source type
-- YouTube links for each show
-- Shareable links to specific dates and years
 - Photo links
 - Tune the Fire score
 
