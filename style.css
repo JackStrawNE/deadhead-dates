@@ -252,3 +252,11 @@ a:focus-visible {
   text-underline-offset: 3px;
   font-size: 1.5rem;
 }
+
+.copy-row {
+  margin-bottom: 0.75rem;
+}
+
+#copy-btn {
+  font-size: 0.9rem;
+}

@@ -35,6 +35,11 @@
     </div>
 
     <p id="status"></p>
+
+    <div class="copy-row">
+      <button id="copy-btn" class="link-btn" hidden>🔗 Copy link to these results</button>
+    </div>
+
     <ul id="results"></ul>
   </div>
 
@@ -43,16 +48,21 @@
     const yearSelect = document.getElementById('show-year');
     const dateBtn = document.getElementById('date-btn');
     const yearBtn = document.getElementById('year-btn');
+    const todayBtn = document.getElementById('today-btn');
     const statusText = document.getElementById('status');
     const resultsList = document.getElementById('results');
     const filterButtons = document.querySelectorAll('.filter-btn');
-    const todayBtn = document.getElementById('today-btn');
-    todayBtn.textContent = '📅 Shows on this date (' +
-      new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) + ')';
+    const copyBtn = document.getElementById('copy-btn');
+
+    const COPY_LABEL = '🔗 Copy link to these results';
 
     // State: which filter is active, and what the last search returned
     let currentFilter = 'ALL';
     let lastSearch = null;
+
+    // Label the "this date" button with today's month and day
+    todayBtn.textContent = '📅 Shows on this date (' +
+      new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) + ')';
 
     // Fill the year dropdown (the Dead toured 1965 to 1995)
     for (let year = 1965; year <= 1995; year++) {
@@ -62,6 +72,11 @@
       yearSelect.appendChild(option);
     }
     yearSelect.value = '1977';
+
+    // Turn 5 into "05"
+    function pad(n) {
+      return String(n).padStart(2, '0');
+    }
 
     // Combine views and ratings into one "Fire" score
     function fireScore(rec) {
@@ -152,28 +167,45 @@
     }
 
     // Build a YouTube search URL like "Grateful Dead 5/8/77"
-function youtubeSearchUrl(isoDate) {
-  const [y, m, d] = isoDate.split('-').map(Number);
-  const shortYear = String(y).slice(-2);
-  const query = `Grateful Dead ${m}/${d}/${shortYear}`;
-  return 'https://www.youtube.com/results?search_query=' + encodeURIComponent(query);
-}
+    function youtubeSearchUrl(isoDate) {
+      const [y, m, d] = isoDate.split('-').map(Number);
+      const shortYear = String(y).slice(-2);
+      const query = `Grateful Dead ${m}/${d}/${shortYear}`;
+      return 'https://www.youtube.com/results?search_query=' + encodeURIComponent(query);
+    }
 
-// Build the YouTube link row
-function makeYouTubeItem(isoDate) {
-  const item = document.createElement('li');
-  item.className = 'youtube-item';
-  const link = document.createElement('a');
-  link.href = youtubeSearchUrl(isoDate);
-  link.target = '_blank';
-  link.rel = 'noopener';
-  link.textContent = '▶ Find this show on YouTube';
-  item.appendChild(link);
-  return item;
-}
+    // Build the YouTube link row
+    function makeYouTubeItem(isoDate) {
+      const item = document.createElement('li');
+      item.className = 'youtube-item';
+      const link = document.createElement('a');
+      link.href = youtubeSearchUrl(isoDate);
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.textContent = '▶ Find this show on YouTube';
+      item.appendChild(link);
+      return item;
+    }
 
-    // Update the filter buttons: highlight the active one, show counts
-    function updateFilterButtons() {
+    // Build a shareable URL for the current search and filter
+    function buildShareUrl() {
+      const params = new URLSearchParams(lastSearch.params);
+      if (currentFilter !== 'ALL') params.set('filter', currentFilter);
+      const base = window.location.href.split('?')[0].split('#')[0];
+      return base + '?' + params.toString();
+    }
+
+    // Put the current search into the address bar (without reloading)
+    function updateUrl() {
+      try {
+        history.replaceState(null, '', buildShareUrl());
+      } catch (error) {
+        // Some environments (like files opened straight from disk) block this
+      }
+    }
+
+    // Update the filter buttons (highlight, counts) and the copy-link button
+    function updateControls() {
       const counts = { ALL: 0, SBD: 0, AUD: 0, MTX: 0 };
       if (lastSearch) {
         counts.ALL = lastSearch.recordings.length;
@@ -188,12 +220,16 @@ function makeYouTubeItem(isoDate) {
         btn.textContent = lastSearch ? `${label} · ${counts[type]}` : label;
         btn.classList.toggle('active', type === currentFilter);
       }
+
+      copyBtn.hidden = !lastSearch;
     }
 
     // Draw the stored search results, applying the current filter
     function renderResults() {
       resultsList.innerHTML = '';
       if (!lastSearch) return;
+
+      updateUrl();
 
       const { mode, recordings, year, date } = lastSearch;
       const visible = currentFilter === 'ALL'
@@ -202,11 +238,13 @@ function makeYouTubeItem(isoDate) {
       const filterNote = currentFilter === 'ALL' ? '' : ` (${currentFilter} only)`;
 
       if (mode === 'date') {
-         resultsList.appendChild(makeYouTubeItem(date));       
-    if (recordings.length === 0) {
-      statusText.textContent = 'No recordings found for that date.';
-      return;
-    }
+        resultsList.appendChild(makeYouTubeItem(date));
+
+        if (recordings.length === 0) {
+          statusText.textContent = 'No recordings found for that date.';
+          return;
+        }
+
         if (visible.length === 0) {
           statusText.textContent = `No ${currentFilter} recordings for that date.`;
           return;
@@ -241,24 +279,24 @@ function makeYouTubeItem(isoDate) {
       statusText.textContent =
         `${year}: ${days.length} shows, ${visible.length} recordings${filterNote}`;
 
-          for (const day of days) {
-      const recs = shows[day];
-      const item = document.createElement('li');
-      const details = document.createElement('details');
-      const summary = document.createElement('summary');
-      const list = document.createElement('ul');
-      list.className = 'recording-list';
+      for (const day of days) {
+        const recs = shows[day];
+        const item = document.createElement('li');
+        const details = document.createElement('details');
+        const summary = document.createElement('summary');
+        const list = document.createElement('ul');
+        list.className = 'recording-list';
 
-      summary.textContent = formatDate(day) + ' · ' + recs.length +
-        (recs.length === 1 ? ' recording' : ' recordings');
+        summary.textContent = formatDate(day) + ' · ' + recs.length +
+          (recs.length === 1 ? ' recording' : ' recordings');
 
-      list.appendChild(makeYouTubeItem(day));             // NEW: just above the recordings loop
+        list.appendChild(makeYouTubeItem(day));
 
-      for (const rec of recs) {
-        list.appendChild(makeRecordingItem(rec));
-      }
+        for (const rec of recs) {
+          list.appendChild(makeRecordingItem(rec));
+        }
 
-      details.appendChild(summary);
+        details.appendChild(summary);
         details.appendChild(list);
         item.appendChild(details);
         resultsList.appendChild(item);
@@ -275,14 +313,14 @@ function makeYouTubeItem(isoDate) {
       statusText.textContent = 'Searching...';
       resultsList.innerHTML = '';
       lastSearch = null;
-      updateFilterButtons();
+      updateControls();
 
       try {
         const recordings = await fetchRecordings(
           `collection:GratefulDead AND date:${date}`
         );
-        lastSearch = { mode: 'date', recordings };
-        updateFilterButtons();
+        lastSearch = { mode: 'date', recordings, date, params: { date } };
+        updateControls();
         renderResults();
       } catch (error) {
         statusText.textContent = 'Something went wrong. Check the console (F12).';
@@ -296,14 +334,14 @@ function makeYouTubeItem(isoDate) {
       statusText.textContent = 'Searching...';
       resultsList.innerHTML = '';
       lastSearch = null;
-      updateFilterButtons();
+      updateControls();
 
       try {
         const recordings = await fetchRecordings(
           `collection:GratefulDead AND year:${year}`
         );
-        lastSearch = { mode: 'year', recordings, year };
-        updateFilterButtons();
+        lastSearch = { mode: 'year', recordings, year, params: { year } };
+        updateControls();
         renderResults();
       } catch (error) {
         statusText.textContent = 'Something went wrong. Check the console (F12).';
@@ -311,16 +349,15 @@ function makeYouTubeItem(isoDate) {
       }
     }
 
-    async function searchThisDate() {
-      const now = new Date();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      const label = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+    // Shows on one calendar day (like 10-20) across every year
+    async function searchThisDate(month, day) {
+      const label = new Date(2000, Number(month) - 1, Number(day))
+        .toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
 
       statusText.textContent = 'Searching...';
       resultsList.innerHTML = '';
       lastSearch = null;
-      updateFilterButtons();
+      updateControls();
 
       // One query covering this month and day in every year the band toured
       const dates = [];
@@ -332,8 +369,13 @@ function makeYouTubeItem(isoDate) {
         const recordings = await fetchRecordings(
           `collection:GratefulDead AND (${dates.join(' OR ')})`
         );
-        lastSearch = { mode: 'year', recordings, year: label };
-        updateFilterButtons();
+        lastSearch = {
+          mode: 'year',
+          recordings,
+          year: label,
+          params: { day: `${month}-${day}` }
+        };
+        updateControls();
         renderResults();
       } catch (error) {
         statusText.textContent = 'Something went wrong. Check the console (F12).';
@@ -341,18 +383,60 @@ function makeYouTubeItem(isoDate) {
       }
     }
 
+    // If the page was opened from a shared link, run that search
+    function loadFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+
+      const filter = params.get('filter');
+      if (['SBD', 'AUD', 'MTX'].includes(filter)) {
+        currentFilter = filter;
+      }
+
+      const date = params.get('date');
+      const year = params.get('year');
+      const day = params.get('day');
+
+      // Check each value looks right before using it
+      if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        dateInput.value = date;
+        searchDate();
+      } else if (year && /^\d{4}$/.test(year)) {
+        yearSelect.value = year;
+        if (yearSelect.value === year) searchYear();
+      } else if (day && /^\d{2}-\d{2}$/.test(day)) {
+        const [month, dayOfMonth] = day.split('-');
+        searchThisDate(month, dayOfMonth);
+      }
+    }
+
     dateBtn.addEventListener('click', searchDate);
     yearBtn.addEventListener('click', searchYear);
-    todayBtn.addEventListener('click', searchThisDate);
+
+    todayBtn.addEventListener('click', () => {
+      const now = new Date();
+      searchThisDate(pad(now.getMonth() + 1), pad(now.getDate()));
+    });
 
     for (const btn of filterButtons) {
       btn.addEventListener('click', () => {
         currentFilter = btn.dataset.filter;
-        updateFilterButtons();
+        updateControls();
         renderResults();
       });
     }
-    
+
+    copyBtn.addEventListener('click', async () => {
+      const url = buildShareUrl();
+      try {
+        await navigator.clipboard.writeText(url);
+        copyBtn.textContent = '✔ Link copied!';
+      } catch (error) {
+        window.prompt('Copy this link:', url);
+      }
+      setTimeout(() => { copyBtn.textContent = COPY_LABEL; }, 2000);
+    });
+
+    loadFromUrl();
   </script>
 </body>
 </html>
