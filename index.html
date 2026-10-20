@@ -23,6 +23,10 @@
       <button id="year-btn">Browse year</button>
     </div>
 
+    <div class="today-row">
+      <button id="today-btn" class="link-btn">Shows on this date</button>
+    </div>
+
     <div class="filter-row">
       <button class="filter-btn active" data-filter="ALL">All</button>
       <button class="filter-btn" data-filter="SBD">SBD</button>
@@ -42,6 +46,9 @@
     const statusText = document.getElementById('status');
     const resultsList = document.getElementById('results');
     const filterButtons = document.querySelectorAll('.filter-btn');
+    const todayBtn = document.getElementById('today-btn');
+    todayBtn.textContent = '📅 Shows on this date (' +
+      new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) + ')';
 
     // State: which filter is active, and what the last search returned
     let currentFilter = 'ALL';
@@ -304,8 +311,39 @@ function makeYouTubeItem(isoDate) {
       }
     }
 
+    async function searchThisDate() {
+      const now = new Date();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const label = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+
+      statusText.textContent = 'Searching...';
+      resultsList.innerHTML = '';
+      lastSearch = null;
+      updateFilterButtons();
+
+      // One query covering this month and day in every year the band toured
+      const dates = [];
+      for (let year = 1965; year <= 1995; year++) {
+        dates.push(`date:${year}-${month}-${day}`);
+      }
+
+      try {
+        const recordings = await fetchRecordings(
+          `collection:GratefulDead AND (${dates.join(' OR ')})`
+        );
+        lastSearch = { mode: 'year', recordings, year: label };
+        updateFilterButtons();
+        renderResults();
+      } catch (error) {
+        statusText.textContent = 'Something went wrong. Check the console (F12).';
+        console.error(error);
+      }
+    }
+
     dateBtn.addEventListener('click', searchDate);
     yearBtn.addEventListener('click', searchYear);
+    todayBtn.addEventListener('click', searchThisDate);
 
     for (const btn of filterButtons) {
       btn.addEventListener('click', () => {
@@ -314,6 +352,7 @@ function makeYouTubeItem(isoDate) {
         renderResults();
       });
     }
+    
   </script>
 </body>
 </html>

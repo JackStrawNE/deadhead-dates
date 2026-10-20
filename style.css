@@ -236,3 +236,19 @@ a:focus-visible {
   background: #ff5252;
   color: #fff;
 }
+
+.today-row {
+  margin-top: 0.75rem;
+}
+
+.link-btn {
+  padding: 0.25rem 0;
+  background: none;
+  color: var(--accent);
+  border: none;
+  border-radius: 0;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-size: 1.5rem;
+}
