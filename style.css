@@ -260,3 +260,40 @@ a:focus-visible {
 #copy-btn {
   font-size: 0.9rem;
 }
+
+.rec-item {
+  display: flex;
+  gap: 0.4rem;
+  align-items: stretch;
+}
+
+.rec-item a {
+  flex: 1;
+  min-width: 0;
+}
+
+.copy-rec {
+  padding: 0 0.8rem;
+  background: var(--card);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+.copy-rec:hover {
+  filter: none;
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+#results .recording-list .copy-rec {
+  border: none;
+  background: transparent;
+}
+
+#results .rec-item.highlight a {
+  background: var(--card-hover);
+  box-shadow: 0 0 0 2px var(--accent);
+}

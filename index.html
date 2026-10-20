@@ -60,6 +60,9 @@
     let currentFilter = 'ALL';
     let lastSearch = null;
 
+    // If set, the next render highlights and scrolls to this recording
+    let highlightId = null;
+
     // Label the "this date" button with today's month and day
     todayBtn.textContent = '📅 Shows on this date (' +
       new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) + ')';
@@ -76,6 +79,17 @@
     // Turn 5 into "05"
     function pad(n) {
       return String(n).padStart(2, '0');
+    }
+
+    // Copy text to the clipboard, with a brief confirmation on the button
+    async function copyText(text, button, doneLabel, normalLabel) {
+      try {
+        await navigator.clipboard.writeText(text);
+        button.textContent = doneLabel;
+      } catch (error) {
+        window.prompt('Copy this link:', text);
+      }
+      setTimeout(() => { button.textContent = normalLabel; }, 2000);
     }
 
     // Combine views and ratings into one "Fire" score
@@ -127,9 +141,24 @@
       return docs;
     }
 
+    // A Dead Dates link that opens this show with this recording highlighted
+    function recordingShareUrl(rec) {
+      const day = rec.date ? rec.date.slice(0, 10) : '';
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+        // No usable show date, so fall back to the plain Archive.org page
+        return 'https://archive.org/details/' + rec.identifier;
+      }
+      const params = new URLSearchParams({ date: day, rec: rec.identifier });
+      const base = window.location.href.split('?')[0].split('#')[0];
+      return base + '?' + params.toString();
+    }
+
     // Build one clickable <li> for a recording
     function makeRecordingItem(rec) {
       const item = document.createElement('li');
+      item.className = 'rec-item';
+      item.dataset.identifier = rec.identifier;
+
       const link = document.createElement('a');
       link.href = 'https://archive.org/details/' + rec.identifier;
       link.target = '_blank';
@@ -154,7 +183,18 @@
         ratingText;
       link.appendChild(stats);
 
+      const shareBtn = document.createElement('button');
+      shareBtn.type = 'button';
+      shareBtn.className = 'copy-rec';
+      shareBtn.textContent = '🔗';
+      shareBtn.title = 'Copy a link to this recording';
+      shareBtn.setAttribute('aria-label', 'Copy a link to this recording');
+      shareBtn.addEventListener('click', () => {
+        copyText(recordingShareUrl(rec), shareBtn, '✔', '🔗');
+      });
+
       item.appendChild(link);
+      item.appendChild(shareBtn);
       return item;
     }
 
@@ -224,6 +264,27 @@
       copyBtn.hidden = !lastSearch;
     }
 
+    // If a link pointed at a specific recording, highlight it and scroll to it
+    function highlightRecording() {
+      if (!highlightId) return;
+
+      const target = resultsList.querySelector(
+        '[data-identifier="' + CSS.escape(highlightId) + '"]'
+      );
+      highlightId = null;
+
+      if (!target) {
+        statusText.textContent += ' (The linked recording was not found.)';
+        return;
+      }
+
+      const details = target.closest('details');
+      if (details) details.open = true;
+
+      target.classList.add('highlight');
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
     // Draw the stored search results, applying the current filter
     function renderResults() {
       resultsList.innerHTML = '';
@@ -242,11 +303,13 @@
 
         if (recordings.length === 0) {
           statusText.textContent = 'No recordings found for that date.';
+          highlightId = null;
           return;
         }
 
         if (visible.length === 0) {
           statusText.textContent = `No ${currentFilter} recordings for that date.`;
+          highlightId = null;
           return;
         }
 
@@ -254,6 +317,7 @@
         for (const rec of visible) {
           resultsList.appendChild(makeRecordingItem(rec));
         }
+        highlightRecording();
         return;
       }
 
@@ -387,18 +451,22 @@
     function loadFromUrl() {
       const params = new URLSearchParams(window.location.search);
 
-      const filter = params.get('filter');
-      if (['SBD', 'AUD', 'MTX'].includes(filter)) {
-        currentFilter = filter;
-      }
-
       const date = params.get('date');
       const year = params.get('year');
       const day = params.get('day');
+      const recId = params.get('rec');
+      const filter = params.get('filter');
+
+      // A link to a specific recording ignores the filter, so it can't hide it
+      const hasRec = recId && /^[\w.-]+$/.test(recId);
+      if (!hasRec && ['SBD', 'AUD', 'MTX'].includes(filter)) {
+        currentFilter = filter;
+      }
 
       // Check each value looks right before using it
       if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
         dateInput.value = date;
+        if (hasRec) highlightId = recId;
         searchDate();
       } else if (year && /^\d{4}$/.test(year)) {
         yearSelect.value = year;
@@ -425,15 +493,8 @@
       });
     }
 
-    copyBtn.addEventListener('click', async () => {
-      const url = buildShareUrl();
-      try {
-        await navigator.clipboard.writeText(url);
-        copyBtn.textContent = '✔ Link copied!';
-      } catch (error) {
-        window.prompt('Copy this link:', url);
-      }
-      setTimeout(() => { copyBtn.textContent = COPY_LABEL; }, 2000);
+    copyBtn.addEventListener('click', () => {
+      copyText(buildShareUrl(), copyBtn, '✔ Link copied!', COPY_LABEL);
     });
 
     loadFromUrl();
