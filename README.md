@@ -2,7 +2,7 @@
 
 Pick a Grateful Dead show date (or a whole year) and find the available recordings on the Internet Archive, ranked by a "Fire" score.
 
-**Live site:** https://jackstrawne.github.io/deadhead-dates/
+**Live site:** https://deaddates.com
 
 ## What it does
 
