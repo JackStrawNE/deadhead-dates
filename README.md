@@ -8,6 +8,7 @@ Pick a Grateful Dead show date (or a whole year) and find the available recordin
 
 - **Single show search:** choose a date and see every recording of that show.
 - **Year browsing:** pick a year (1965 to 1995) and see its shows, each expanding to show its recordings.
+- **On This Date** Search for all shows played on a specific day of the year.
 - **Fire score:** recordings are ranked hottest first, using a score that blends all-time views with listener ratings.
 - **Source tags:** recordings are labeled SBD (soundboard), AUD (audience), or MTX (matrix) when the naming makes that clear.
 - **Source Filter** You can filter recordings by source type.
